@@ -1,0 +1,119 @@
+const EMAIL_OVERRIDE = false;
+const EMAIL_ADDRESS_OVERRIDE = 'test@example.com';
+const APP_TITLE = 'Generate and send PDFs';
+const OUTPUT_FOLDER_NAME = "Component Requests PDFs";
+const DUE_DATE_NUM_DAYS = 15;
+
+const DATA_SHEET_NAME = 'Form Responses 1';
+const REQUEST_TEMPLATE_SHEET_NAME = 'Request Template';
+
+const EMAIL_SUBJECT = 'Component Request Notification';
+const EMAIL_BODY = 'Hello!\rPlease see the attached PDF document.';
+
+/**
+ * Trigger function to process data when a new row is added.
+ */
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  if (sheet.getName() === DATA_SHEET_NAME && e.range.getRow() > 1) {
+    processRow(e.range.getRow());
+  }
+}
+
+/**
+ * Processes the specific row to generate a PDF and send an email.
+ * 
+ * @param {number} row - The row number to process
+ */
+function processRow(row) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const dataSheet = ss.getSheetByName(DATA_SHEET_NAME);
+  const templateSheet = ss.getSheetByName(REQUEST_TEMPLATE_SHEET_NAME);
+
+  // Get data from the specified row
+  const [clientName, clientEmail, componentRequest] = dataSheet.getRange(row, 1, 1, 3).getValues()[0];
+
+  // Validate data
+  if (!clientName || !clientEmail || !componentRequest) {
+    Logger.log('Missing data in row ' + row);
+    return;
+  }
+
+  // Fill in the template with the data
+  updateTemplateSheet(templateSheet, { clientName, clientEmail, componentRequest });
+
+  // Generate and send PDF
+  const pdf = generatePDF(ss.getId(), templateSheet, `Request-${clientName}`);
+  sendEmail(clientEmail, pdf);
+}
+
+/**
+ * Updates the template sheet with data.
+ * 
+ * @param {object} templateSheet - Template sheet to update
+ * @param {object} data - Data to set in the template
+ */
+function updateTemplateSheet(templateSheet, { clientName, clientEmail, componentRequest }) {
+  const ranges = {
+    'B10': clientName,
+    'B11': clientEmail,
+    'B12': componentRequest
+  };
+  for (const range in ranges) {
+    templateSheet.getRange(range).setValue(ranges[range]);
+  }
+}
+
+/**
+ * Generates a PDF for the given sheet.
+ * 
+ * @param {string} ssId - Google Spreadsheet ID
+ * @param {object} sheet - Sheet to be converted to PDF
+ * @param {string} pdfName - File name for the PDF
+ * @return {blob} PDF file as a blob
+ */
+function generatePDF(ssId, sheet, pdfName) {
+  const url = `https://docs.google.com/spreadsheets/d/${ssId}/export?format=pdf&size=7&fzr=true&portrait=true&fitw=true&gridlines=false&printtitle=false&top_margin=0.5&bottom_margin=0.25&left_margin=0.5&right_margin=0.5&sheetnames=false&pagenum=UNDEFINED&attachment=true&gid=${sheet.getSheetId()}`;
+  
+  const params = { method: "GET", headers: { "authorization": "Bearer " + ScriptApp.getOAuthToken() } };
+  const blob = UrlFetchApp.fetch(url, params).getBlob().setName(`${pdfName}.pdf`);
+
+  return savePDF(blob);
+}
+
+/**
+ * Saves the PDF to a folder in Google Drive.
+ * 
+ * @param {blob} pdfBlob - PDF file blob
+ * @return {file} PDF file
+ */
+function savePDF(pdfBlob) {
+  const folder = getOrCreateFolder(OUTPUT_FOLDER_NAME);
+  return folder.createFile(pdfBlob);
+}
+
+/**
+ * Sends an email with the PDF attachment.
+ * 
+ * @param {string} recipient - Email address of the recipient
+ * @param {blob} pdfBlob - PDF file blob
+ */
+function sendEmail(recipient, pdfBlob) {
+  GmailApp.sendEmail(
+    EMAIL_OVERRIDE ? EMAIL_ADDRESS_OVERRIDE : recipient,
+    EMAIL_SUBJECT,
+    EMAIL_BODY,
+    { attachments: [pdfBlob], name: APP_TITLE }
+  );
+}
+
+/**
+ * Gets or creates a folder by name.
+ * 
+ * @param {string} name - Name of the folder
+ * @return {folder} Folder object
+ */
+function getOrCreateFolder(name) {
+  const folders = DriveApp.getFoldersByName(name);
+  return folders.hasNext() ? folders.next() : DriveApp.createFolder(name);
+}
