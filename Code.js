@@ -34,8 +34,7 @@
  */
 
 const EMAIL_OVERRIDE = true;
-const EMAIL_ADDRESS_OVERRIDE = ['amily_han@whirlpool.com', 'regis_t_feroldi@whirlpool.com', 'swift_xu@whirlpool.com', 'claudio_soares@whirlpool.com'];
-//const EMAIL_ADDRESS_OVERRIDE = ['claudio_soares@whirlpool.com'];
+const EMAIL_ADDRESS_OVERRIDE = ['TBD']
 const APP_TITLE = 'Generate and send PDFs';
 const OUTPUT_FOLDER_NAME = "Component Requests PDFs";
 const DATA_SHEET_NAME = 'Form Responses 1';
@@ -167,7 +166,7 @@ function updateTemplateSheet(templateSheet, formattedDate, data) {
 
 
 function generateAndSendPDF(ssId, sheetId, pdfName, recipient) {
-  const url = `https://docs.google.com/spreadsheets/d/${ssId}/export?format=pdf&size=A4&sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&fzr=false&gid=${sheetId}`;
+  const url = `TBD`;
 
 
   const params = { method: "GET", headers: { "authorization": "Bearer " + ScriptApp.getOAuthToken() } };
